@@ -42,6 +42,9 @@ public class BuiltInPartitioner {
     private final int stickyBatchSize;
 
     private volatile PartitionLoadStats partitionLoadStats = null;
+    /**
+     * 当前粘性分区
+     */
     private final AtomicReference<StickyPartitionInfo> stickyPartitionInfo = new AtomicReference<>();
 
     // Visible and used for testing only.
@@ -64,6 +67,7 @@ public class BuiltInPartitioner {
 
     /**
      * Calculate the next partition for the topic based on the partition load stats.
+     * 计算下一个分区，
      */
     private int nextPartition(Cluster cluster) {
         int random = mockRandom != null ? mockRandom.get() : Utils.toPositive(ThreadLocalRandom.current().nextInt());
@@ -75,24 +79,30 @@ public class BuiltInPartitioner {
         if (partitionLoadStats == null) {
             // We don't have stats to do adaptive partitioning (or it's disabled), just switch to the next
             // partition based on uniform distribution.
+            // 没有分区负载统计数据，基于随机算法选择分区
             List<PartitionInfo> availablePartitions = cluster.availablePartitionsForTopic(topic);
             if (availablePartitions.size() > 0) {
+                // 可用分区数大于0，从可用分区中随机选一个分区
                 partition = availablePartitions.get(random % availablePartitions.size()).partition();
             } else {
                 // We don't have available partitions, just pick one among all partitions.
+                // 没有可用分区，从所有分区中随机选一个分区
                 List<PartitionInfo> partitions = cluster.partitionsForTopic(topic);
                 partition = random % partitions.size();
             }
         } else {
             // Calculate next partition based on load distribution.
             // Note that partitions without leader are excluded from the partitionLoadStats.
+            // 有分区负载统计数据，基于统计数据选择分区
             assert partitionLoadStats.length > 0;
 
             int[] cumulativeFrequencyTable = partitionLoadStats.cumulativeFrequencyTable;
+            // 随机数模余累积最大值
             int weightedRandom = random % cumulativeFrequencyTable[partitionLoadStats.length - 1];
 
             // By construction, the cumulative frequency table is sorted, so we can use binary
             // search to find the desired index.
+            // 累积数组中二分搜索查找
             int searchResult = Arrays.binarySearch(cumulativeFrequencyTable, 0, partitionLoadStats.length, weightedRandom);
 
             // binarySearch results the index of the found element, or -(insertion_point) - 1
@@ -141,14 +151,17 @@ public class BuiltInPartitioner {
     StickyPartitionInfo peekCurrentPartitionInfo(Cluster cluster) {
         StickyPartitionInfo partitionInfo = stickyPartitionInfo.get();
         if (partitionInfo != null)
+            // stickyPartitionInfo不为空，直接返回
             return partitionInfo;
 
         // We're the first to create it.
+        // stickyPartitionInfo为空，首次创建，并获取下一个分区
         partitionInfo = new StickyPartitionInfo(nextPartition(cluster));
         if (stickyPartitionInfo.compareAndSet(null, partitionInfo))
             return partitionInfo;
 
         // Someone has raced us.
+        // 其它线程cas成功，直接使用
         return stickyPartitionInfo.get();
     }
 
@@ -187,6 +200,7 @@ public class BuiltInPartitioner {
      */
     void updatePartitionInfo(StickyPartitionInfo partitionInfo, int appendedBytes, Cluster cluster, boolean enableSwitch) {
         // partitionInfo may be null if the caller didn't use built-in partitioner.
+        // 没有使用内建分区器，跳过
         if (partitionInfo == null)
             return;
 

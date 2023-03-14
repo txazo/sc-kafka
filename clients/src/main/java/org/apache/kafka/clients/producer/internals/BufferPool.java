@@ -125,19 +125,26 @@ public class BufferPool {
 
         try {
             // check if we have a free buffer of the right size pooled
+            // 待分配大小等于缓存池大小，且缓存池空闲队列不为空，直接从缓存池空闲队列中获取
             if (size == poolableSize && !this.free.isEmpty())
                 return this.free.pollFirst();
 
             // now check if the request is immediately satisfiable with the
             // memory on hand or if we need to block
+            // 计算总的缓存池空闲空间大小
             int freeListSize = freeSize() * this.poolableSize;
+            // 未池化的大小 + 总的缓存池空闲空间大小 > 待分配大小
             if (this.nonPooledAvailableMemory + freeListSize >= size) {
                 // we have enough unallocated or pooled memory to immediately
                 // satisfy the request, but need to allocate the buffer
+                // 释放缓存池空闲队列内存到未池化的大小，直到满足分配需求
                 freeUp(size);
+                // 从未池化空间分配内存
                 this.nonPooledAvailableMemory -= size;
             } else {
+                // 内存不足，阻塞等待
                 // we are out of memory and will have to block
+                // 已累积的内存分配大小
                 int accumulated = 0;
                 Condition moreMemory = this.lock.newCondition();
                 try {
@@ -172,6 +179,7 @@ public class BufferPool {
                         // check if we can satisfy this request from the free list,
                         // otherwise allocate memory
                         if (accumulated == 0 && size == this.poolableSize && !this.free.isEmpty()) {
+                            // 因缓存池空闲队列内存不足而等待，被唤醒，直接从缓存池空闲队列分配内存
                             // just grab a buffer from the free list
                             buffer = this.free.pollFirst();
                             accumulated = size;
@@ -188,7 +196,9 @@ public class BufferPool {
                     accumulated = 0;
                 } finally {
                     // When this loop was not able to successfully terminate don't loose available memory
+                    // 因异常中断，还回已分配的内存空间
                     this.nonPooledAvailableMemory += accumulated;
+                    // 移除阻塞等待
                     this.waiters.remove(moreMemory);
                 }
             }
@@ -196,6 +206,7 @@ public class BufferPool {
             // signal any additional waiters if there is more memory left
             // over for them
             try {
+                // 有空闲空间且等待队列不为空，唤醒等待队列的头节点
                 if (!(this.nonPooledAvailableMemory == 0 && this.free.isEmpty()) && !this.waiters.isEmpty())
                     this.waiters.peekFirst().signal();
             } finally {
@@ -205,6 +216,7 @@ public class BufferPool {
         }
 
         if (buffer == null)
+            // 非缓冲池分配，申请分配直接内存
             return safeAllocateByteBuffer(size);
         else
             return buffer;

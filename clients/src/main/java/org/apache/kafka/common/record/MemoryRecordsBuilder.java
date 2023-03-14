@@ -814,13 +814,16 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      * re-allocation in the underlying byte buffer stream.
      */
     public boolean hasRoomFor(long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers) {
+        // batch满了，返回false
         if (isFull())
             return false;
 
         // We always allow at least one record to be appended (the ByteBufferOutputStream will grow as needed)
+        // batch已添加的消息记录数为0，返回true
         if (numRecords == 0)
             return true;
 
+        // 计算消息记录的大小
         final int recordSize;
         if (magic < RecordBatch.MAGIC_VALUE_V2) {
             recordSize = Records.LOG_OVERHEAD + LegacyRecord.recordSize(magic, key, value);
@@ -831,6 +834,7 @@ public class MemoryRecordsBuilder implements AutoCloseable {
         }
 
         // Be conservative and not take compression of the new record into consideration.
+        // 判断是否有足够的剩余空间写入消息记录
         return this.writeLimit >= estimatedBytesWritten() + recordSize;
     }
 

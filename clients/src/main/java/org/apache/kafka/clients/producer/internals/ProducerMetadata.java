@@ -66,16 +66,21 @@ public class ProducerMetadata extends Metadata {
 
     public synchronized void add(String topic, long nowMs) {
         Objects.requireNonNull(topic, "topic cannot be null");
+        // metadataIdleMs，metadata.max.idle.ms，topic元数据最大空闲时间，超出将从Producer缓存移除
         if (topics.put(topic, nowMs + metadataIdleMs) == null) {
+            // topic不存在(新加入或已失效移除)，加入到newTopics
             newTopics.add(topic);
+            // 请求更新新的topic元数据，此处只是设置标识，未真正发送请求
             requestUpdateForNewTopics();
         }
     }
 
     public synchronized int requestUpdateForTopic(String topic) {
         if (newTopics.contains(topic)) {
+            // 部分更新newTopics的元数据
             return requestUpdateForNewTopics();
         } else {
+            // 全量更新Cluster集群元数据
             return requestUpdate();
         }
     }

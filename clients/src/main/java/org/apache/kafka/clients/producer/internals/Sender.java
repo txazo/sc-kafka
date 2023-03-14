@@ -367,7 +367,9 @@ public class Sender implements Runnable {
 
         // create produce requests
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes, this.maxRequestSize, now);
+        // batch添加到飞行中的batch列表
         addToInflightBatches(batches);
+        // 保证消息顺序性，锁住当前分区
         if (guaranteeMessageOrder) {
             // Mute all the partitions drained
             for (List<ProducerBatch> batchList : batches.values()) {

@@ -37,13 +37,22 @@ public final class Cluster {
     private final boolean isBootstrapConfigured;
     private final List<Node> nodes;
     private final Set<String> unauthorizedTopics;
+    /**
+     * 无效的topic列表
+     */
     private final Set<String> invalidTopics;
     private final Set<String> internalTopics;
     private final Node controller;
     private final Map<TopicPartition, PartitionInfo> partitionsByTopicPartition;
     private final Map<String, List<PartitionInfo>> partitionsByTopic;
     private final Map<String, List<PartitionInfo>> availablePartitionsByTopic;
+    /**
+     * brokerId -> 主分区在当前broker上的分区
+     */
     private final Map<Integer, List<PartitionInfo>> partitionsByNode;
+    /**
+     * brokerId -> Node
+     */
     private final Map<Integer, Node> nodesById;
     private final ClusterResource clusterResource;
     private final Map<String, Uuid> topicIds;

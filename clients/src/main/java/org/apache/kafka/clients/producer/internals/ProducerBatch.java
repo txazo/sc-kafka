@@ -104,12 +104,17 @@ public final class ProducerBatch {
      */
     public FutureRecordMetadata tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers, Callback callback, long now) {
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
+            // batch剩余空间不足，返回null
             return null;
         } else {
+            // 消息的key、value、headers追加到batch
             this.recordsBuilder.append(timestamp, key, value, headers);
+            // 更新最大消息记录大小
             this.maxRecordSize = Math.max(this.maxRecordSize, AbstractRecords.estimateSizeInBytesUpperBound(magic(),
                     recordsBuilder.compressionType(), key, value, headers));
+            // 更新最后一次append的时间
             this.lastAppendTime = now;
+            // 返回发送消息元数据Future
             FutureRecordMetadata future = new FutureRecordMetadata(this.produceFuture, this.recordCount,
                                                                    timestamp,
                                                                    key == null ? -1 : key.length,
@@ -117,7 +122,9 @@ public final class ProducerBatch {
                                                                    Time.SYSTEM);
             // we have to keep every future returned to the users in case the batch needs to be
             // split to several new batches and resent.
+            // 关联保存用户Callback和Future
             thunks.add(new Thunk(callback, future));
+            // batch的消息记录数加1
             this.recordCount++;
             return future;
         }
