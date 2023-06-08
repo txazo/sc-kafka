@@ -243,6 +243,7 @@ class KafkaServer(
         config.dynamicConfig.initialize(Some(zkClient))
 
         /* start scheduler */
+        // 启动kafka调度器
         kafkaScheduler = new KafkaScheduler(config.backgroundThreads)
         kafkaScheduler.startup()
 

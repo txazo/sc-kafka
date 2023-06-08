@@ -552,8 +552,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     }
 
     private static int configureDeliveryTimeout(ProducerConfig config, Logger log) {
+        // 默认120s
         int deliveryTimeoutMs = config.getInt(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG);
+        // 默认0
         int lingerMs = lingerMs(config);
+        // 默认30s
         int requestTimeoutMs = config.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG);
         int lingerAndRequestTimeoutMs = (int) Math.min((long) lingerMs + requestTimeoutMs, Integer.MAX_VALUE);
 
@@ -1032,7 +1035,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             // partition分区选择
             // 1、指定了partition，使用指定的partition
             // 2、指定了分区器partitioner，使用指定的分区器partitioner选择分区
-            // 3、key不为空且partitioner.ignore.keys=false，对key进行一致性hash选择分区
+            // 3、key不为空且partitioner.ignore.keys=false，对key进行hash选择分区
             // 4、返回RecordMetadata.UNKNOWN_PARTITION，后续在RecordAccumulator使用内建分区器选择分区
             int partition = partition(record, serializedKey, serializedValue, cluster);
 

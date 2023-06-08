@@ -839,7 +839,9 @@ public class Sender implements Runnable {
 
         ProduceRequest.Builder requestBuilder = ProduceRequest.forMagic(minUsedMagic,
                 new ProduceRequestData()
+                        // ack
                         .setAcks(acks)
+                        // 超时时间30ms
                         .setTimeoutMs(timeout)
                         .setTransactionalId(transactionalId)
                         .setTopicData(tpd));
