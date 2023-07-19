@@ -1055,16 +1055,17 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             long timestamp = record.timestamp() == null ? nowMs : record.timestamp();
 
             // A custom partitioner may take advantage on the onNewBatch callback.
+            // 创建新的批次是否中断，自定义分区器可能需要依赖onNewBatch()的回调
             boolean abortOnNewBatch = partitioner != null;
 
             // Append the record to the accumulator.  Note, that the actual partition may be
             // calculated there and can be accessed via appendCallbacks.topicPartition.
-            // 消息追加到缓冲区，abortOnNewBatch=true
+            // 消息追加到缓冲区，有自定义分区器时，abortOnNewBatch=true
             RecordAccumulator.RecordAppendResult result = accumulator.append(record.topic(), partition, timestamp, serializedKey,
                     serializedValue, headers, appendCallbacks, remainingWaitMs, abortOnNewBatch, nowMs, cluster);
             assert appendCallbacks.getPartition() != RecordMetadata.UNKNOWN_PARTITION;
 
-            // 因要创建新的batch而中断
+            // 有自定义分区器时，因要创建新的batch而中断
             if (result.abortForNewBatch) {
                 int prevPartition = partition;
                 // 回调分区器的onNewBatch方法

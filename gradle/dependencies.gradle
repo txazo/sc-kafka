@@ -126,7 +126,9 @@ versions += [
   swaggerJaxrs2: "2.2.0",
   zinc: "1.7.2",
   zookeeper: "3.6.4",
-  zstd: "1.5.2-1"
+  zstd: "1.5.2-1",
+  fastjson: "1.2.83",
+  gson: "2.10.1"
 ]
 libs += [
   activation: "javax.activation:activation:$versions.activation",
@@ -216,5 +218,7 @@ libs += [
   jfreechart: "jfreechart:jfreechart:$versions.jfreechart",
   mavenArtifact: "org.apache.maven:maven-artifact:$versions.mavenArtifact",
   zstd: "com.github.luben:zstd-jni:$versions.zstd",
-  httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient"
+  httpclient: "org.apache.httpcomponents:httpclient:$versions.httpclient",
+  fastjson: "com.alibaba:fastjson:$versions.fastjson",
+  gson: "com.google.code.gson:gson:$versions.gson"
 ]

@@ -28,6 +28,7 @@ import kafka.network
 import kafka.server.KafkaConfig
 import kafka.utils.{Logging, NotNothing, Pool}
 import kafka.utils.Implicits._
+import org.apache.kafka.common.LocalLogUtil
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.memory.MemoryPool
 import org.apache.kafka.common.message.ApiMessageType.ListenerType
@@ -393,6 +394,7 @@ class RequestChannel(val queueSize: Int,
     onComplete: Option[Send => Unit]
   ): Unit = {
     updateErrorMetrics(request.header.apiKey, response.errorCounts.asScala)
+    LocalLogUtil.log(s"ApiKey ${response.apiKey} response:${response}")
     sendResponse(new RequestChannel.SendResponse(
       request,
       request.buildResponseSend(response),

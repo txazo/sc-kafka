@@ -1,5 +1,7 @@
 # Kafka本地源码编译启动
 
+gradle编译: `gradle build`、`gradle build -x test`
+
 * config/server.properties复制一份，按需修改
 * config/log4j.properties复制到core/src/main/resources目录下，替换其中的${kafka.logs.dir}
 * 修改build.gradle，`project(':core')`下`compileOnly libs.log4j`修改为下面配置

@@ -80,12 +80,15 @@ public class SubscriptionState {
     }
 
     /* the type of subscription */
+    // 订阅类型
     private SubscriptionType subscriptionType;
 
     /* the pattern user has requested */
+    // 订阅的模式
     private Pattern subscribedPattern;
 
     /* the list of topics the user has requested */
+    // 订阅的topic列表
     private Set<String> subscription;
 
     /* The list of topics the group has subscribed to. This may include some topics which are not part

@@ -32,6 +32,7 @@ import kafka.utils.Implicits._
 import kafka.utils.{CoreUtils, Logging}
 import org.apache.kafka.clients.admin.AlterConfigOp.OpType
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry}
+import org.apache.kafka.common.LocalLogUtil
 import org.apache.kafka.common.acl.AclOperation._
 import org.apache.kafka.common.acl.AclOperation
 import org.apache.kafka.common.config.ConfigResource
@@ -179,7 +180,8 @@ class KafkaApis(val requestChannel: RequestChannel,
         throw new IllegalStateException(s"API ${request.header.apiKey} is not enabled")
       }
 
-      info(s"ApiKey ${request.header.apiKey} request:${request}")
+      // info(s"ApiKey ${request.header.apiKey} request:${request}")
+      LocalLogUtil.log(s"ApiKey ${request.header.apiKey} request:${request}")
       request.header.apiKey match {
         case ApiKeys.PRODUCE => handleProduceRequest(request, requestLocal)
         case ApiKeys.FETCH => handleFetchRequest(request)

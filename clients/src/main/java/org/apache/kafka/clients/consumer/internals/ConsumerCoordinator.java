@@ -107,6 +107,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
     // this collection must be thread-safe because it is modified from the response handler
     // of offset commit requests, which may be invoked from the heartbeat thread
+    // 已完成的offset提交队列
     private final ConcurrentLinkedQueue<OffsetCommitCompletion> completedOffsetCommits;
 
     private boolean isLeader = false;
@@ -514,8 +515,10 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      * @return true iff the operation succeeded
      */
     public boolean poll(Timer timer, boolean waitForJoinGroup) {
+        // 1、Cluster元数据变更了，更新订阅模式匹配
         maybeUpdateSubscriptionMetadata();
 
+        // 2、已完成的offset提交回调
         invokeCompletedOffsetCommitCallbacks();
 
         if (subscriptions.hasAutoAssignedPartitions()) {
@@ -664,13 +667,17 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             throw new IllegalStateException("Coordinator selected invalid assignment protocol: " + assignmentStrategy);
         String assignorName = assignor.name();
 
+        // 所有订阅的topic集合
         Set<String> allSubscribedTopics = new HashSet<>();
+        // memberId -> 消费者 映射
         Map<String, Subscription> subscriptions = new HashMap<>();
 
         // collect all the owned partitions
+        // memberId -> 消费者已拥有的分区列表 映射
         Map<String, List<TopicPartition>> ownedPartitions = new HashMap<>();
 
         for (JoinGroupResponseData.JoinGroupResponseMember memberSubscription : allSubscriptions) {
+            // 消费者反序列化
             Subscription subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(memberSubscription.metadata()));
             subscription.setGroupInstanceId(Optional.ofNullable(memberSubscription.groupInstanceId()));
             subscriptions.put(memberSubscription.memberId(), subscription);
@@ -693,6 +700,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
         log.debug("Performing assignment using strategy {} with subscriptions {}", assignorName, subscriptions);
 
+        // 开始消费者消费分区分配
         Map<String, Assignment> assignments = assignor.assign(metadata.fetch(), new GroupSubscription(subscriptions)).groupAssignment();
 
         // skip the validation for built-in cooperative sticky assignor since we've considered
@@ -1160,6 +1168,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      *         the coordinator
      */
     public boolean commitOffsetsSync(Map<TopicPartition, OffsetAndMetadata> offsets, Timer timer) {
+        // 已完成的offset提交回调
         invokeCompletedOffsetCommitCallbacks();
 
         if (offsets.isEmpty())
@@ -1176,8 +1185,10 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             // We may have had in-flight offset commits when the synchronous commit began. If so, ensure that
             // the corresponding callbacks are invoked prior to returning in order to preserve the order that
             // the offset commits were applied.
+            // 已完成的offset提交回调
             invokeCompletedOffsetCommitCallbacks();
 
+            // offset提交成功，ConsumerInterceptor回调onCommit
             if (future.succeeded()) {
                 if (interceptors != null)
                     interceptors.onCommit(offsets);
@@ -1187,6 +1198,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
             if (future.failed() && !future.isRetriable())
                 throw future.exception();
 
+            // 失败重试，重试间隔，默认100ms
             timer.sleep(rebalanceConfig.retryBackoffMs);
         } while (timer.notExpired());
 

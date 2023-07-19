@@ -16,6 +16,7 @@
  */
 package org.apache.kafka.clients;
 
+import org.apache.kafka.common.LocalLogUtil;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
@@ -530,6 +531,13 @@ public class NetworkClient implements KafkaClient {
                 send,
                 now);
         this.inFlightRequests.add(inFlightRequest);
+        if (clientRequest.apiKey() != ApiKeys.FETCH &&
+                clientRequest.apiKey() != ApiKeys.HEARTBEAT &&
+                clientRequest.apiKey() != ApiKeys.API_VERSIONS &&
+                clientRequest.apiKey() != ApiKeys.PRODUCE) {
+            LocalLogUtil.log("ClientReq %s class=%s data=%s", clientRequest.apiKey().name(),
+                    request.getClass().getName(), request.data());
+        }
         selector.send(new NetworkSend(clientRequest.destination(), send));
     }
 
@@ -876,6 +884,13 @@ public class NetworkClient implements KafkaClient {
             InFlightRequest req = inFlightRequests.completeNext(source);
 
             AbstractResponse response = parseResponse(receive.payload(), req.header);
+            if (response.apiKey() != ApiKeys.FETCH &&
+                    response.apiKey() != ApiKeys.HEARTBEAT &&
+                    response.apiKey() != ApiKeys.API_VERSIONS &&
+                    response.apiKey() != ApiKeys.PRODUCE) {
+                LocalLogUtil.log("ClientRep %s class=%s data=%s", response.apiKey().name(),
+                        response.getClass().getName(), response.data());
+            }
             if (throttleTimeSensor != null)
                 throttleTimeSensor.record(response.throttleTimeMs(), now);
 

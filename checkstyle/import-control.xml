@@ -37,6 +37,8 @@
   <allow pkg="javax.security" />
   <allow pkg="org.ietf.jgss" />
   <allow pkg="net.jqwik.api" />
+  <allow pkg="com.alibaba.fastjson" />
+  <allow pkg="com.google.gson" />
 
   <!-- no one depends on the server -->
   <disallow pkg="kafka" />

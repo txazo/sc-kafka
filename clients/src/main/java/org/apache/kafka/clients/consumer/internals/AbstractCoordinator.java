@@ -627,8 +627,10 @@ public abstract class AbstractCoordinator implements Closeable {
                             log.info("Successfully joined group with generation {}", AbstractCoordinator.this.generation);
 
                             if (joinResponse.isLeader()) {
+                                // Leader消费者
                                 onLeaderElected(joinResponse).chain(future);
                             } else {
+                                // Follower消费者
                                 onJoinFollower().chain(future);
                             }
                         }

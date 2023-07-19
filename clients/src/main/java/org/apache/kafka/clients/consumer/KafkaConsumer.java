@@ -967,7 +967,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 throwIfNoAssignorsConfigured();
                 fetcher.clearBufferedDataForUnassignedTopics(topics);
                 log.info("Subscribed to topic(s): {}", Utils.join(topics, ", "));
+                // 设置订阅类型、订阅topic列表、Listener
                 if (this.subscriptions.subscribe(new HashSet<>(topics), listener))
+                    // 请求更新新的topic元数据（设置标识）
                     metadata.requestUpdateForNewTopics();
             }
         } finally {
@@ -1031,8 +1033,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
             throwIfNoAssignorsConfigured();
             log.info("Subscribed to pattern: '{}'", pattern);
+            // 设置订阅类型、订阅模式、Listener
             this.subscriptions.subscribe(pattern, listener);
+            // 订阅模式转换为订阅topic列表（此处可能还未获取Cluster元数据）
             this.coordinator.updatePatternSubscription(metadata.fetch());
+            // 请求更新新的topic元数据（设置标识）
             this.metadata.requestUpdateForNewTopics();
         } finally {
             release();
@@ -1233,13 +1238,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
                 if (includeMetadataInTimeout) {
                     // try to update assignment metadata BUT do not need to block on the timer for join group
+                    // 1、尝试更新分配元数据，但不用阻塞在join分组上
                     updateAssignmentMetadataIfNeeded(timer, false);
                 } else {
+                    // 这个逻辑新版API不会走到
                     while (!updateAssignmentMetadataIfNeeded(time.timer(Long.MAX_VALUE), true)) {
                         log.warn("Still waiting for metadata");
                     }
                 }
 
+                // 2、拉取消息
                 final Fetch<K, V> fetch = pollForFetches(timer);
                 if (!fetch.isEmpty()) {
                     // before returning the fetched records, we can send off the next round of fetches
@@ -1248,6 +1256,8 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     //
                     // NOTE: since the consumed position has already been updated, we must not allow
                     // wakeups or any other errors to be triggered prior to returning the fetched records.
+                    // 3、在返回已拉取的消息之前，发送下一轮fetch请求，并且不用阻塞等待响应，实现流水线
+                    // unsent不为空，inFlightRequests不为空
                     if (fetcher.sendFetches() > 0 || client.hasPendingRequests()) {
                         client.transmitSends();
                     }
@@ -1257,10 +1267,13 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                                 + "since the consumer's position has advanced for at least one topic partition");
                     }
 
+                    // 4、消费拦截器onConsume回调
                     return this.interceptors.onConsume(new ConsumerRecords<>(fetch.records()));
                 }
+                // 时间未过期，继续循环
             } while (timer.notExpired());
 
+            // 时间过期，未拉取到消息，返回空记录
             return ConsumerRecords.empty();
         } finally {
             release();
@@ -1273,6 +1286,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             return false;
         }
 
+        // 更新fetch的offset位置
         return updateFetchPositions(timer);
     }
 
@@ -1284,12 +1298,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 Math.min(coordinator.timeToNextPoll(timer.currentTimeMs()), timer.remainingMs());
 
         // if data is available already, return it immediately
+        // 如果数据已就绪，立刻返回
         final Fetch<K, V> fetch = fetcher.collectFetch();
         if (!fetch.isEmpty()) {
             return fetch;
         }
 
         // send any new fetches (won't resend pending fetches)
+        // 发送新的fetch请求
         fetcher.sendFetches();
 
         // We do not want to be stuck blocking in poll if we are missing some positions
@@ -1304,6 +1320,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         log.trace("Polling for fetches with timeout {}", pollTimeout);
 
         Timer pollTimer = time.timer(pollTimeout);
+        // IO读写
         client.poll(pollTimer, () -> {
             // since a fetch might be completed by the background thread, we need this poll condition
             // to ensure that we do not block unnecessarily in poll()
@@ -1311,6 +1328,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         });
         timer.update(pollTimer.currentTimeMs());
 
+        // 收集拉取到的数据
         return fetcher.collectFetch();
     }
 
@@ -1355,6 +1373,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void commitSync() {
+        // 默认超时时间60s
         commitSync(Duration.ofMillis(defaultApiTimeoutMs));
     }
 

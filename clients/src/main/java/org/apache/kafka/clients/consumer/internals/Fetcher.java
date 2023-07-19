@@ -158,6 +158,7 @@ public class Fetcher<K, V> implements Closeable {
     private final OffsetsForLeaderEpochClient offsetsForLeaderEpochClient;
     private final Set<Integer> nodesWithPendingFetchRequests;
     private final ApiVersions apiVersions;
+    // 元数据更新版本
     private final AtomicInteger metadataUpdateVersion = new AtomicInteger(-1);
 
     private CompletedFetch nextInLineFetch = null;
